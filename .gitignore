@@ -1,0 +1,18 @@
+# 运行产物
+outputs/
+*.pkl
+*.png
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# IDE / 系统
+.idea/
+.vscode/
+.DS_Store
