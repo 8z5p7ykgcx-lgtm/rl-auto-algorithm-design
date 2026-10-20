@@ -49,12 +49,17 @@ rl-auto-algorithm-design/
 │   ├── baselines/           # 人工设计算法对照
 │   │   ├── genetic_algorithm.py
 │   │   └── simulated_annealing.py
+│   ├── llm/                 # ★ 大模型驱动的自动算法设计（可选功能）
+│   │   ├── client.py        #   OpenAI 兼容客户端（DeepSeek/OpenAI/智谱/千问）
+│   │   └── designer.py      #   prompt 构建 + 响应解析校验 + 回退默认算法
 │   ├── evaluate.py          # 评估器：未见实例上 RL vs GA vs SA vs Random
 │   └── visualize.py         # 可视化：训练曲线 / 对比条形图 / TSP 路径 / 构件使用统计
 ├── scripts/
 │   ├── train.py             # 单问题训练入口
 │   ├── evaluate.py          # 单问题评估入口
-│   └── demo.py              # 一键：三个问题 训练+评估+可视化
+│   ├── demo.py              # 一键：三个问题 训练+评估+可视化
+│   └── llm_design.py        # ★ LLM 自动算法设计入口（按模板给数据即可跑）
+├── examples/                # ★ LLM 模板示例（tsp / knapsack / flowshop）
 └── tests/                   # pytest 测试
 ```
 
@@ -73,7 +78,44 @@ python scripts/evaluate.py --problem tsp --policy outputs/tsp_policy.pkl
 
 # 4) 跑测试
 python -m pytest tests/ -v
+
+# 5) ★ 大模型驱动的自动算法设计（可选）：按模板给数据，LLM 自动选算法去跑
+export LLM_API_KEY=sk-xxxx                 # DeepSeek Key
+export LLM_BASE_URL=https://api.deepseek.com   # 可选（换 OpenAI/智谱/千问就改这里+模型）
+export LLM_MODEL=deepseek-chat             # 可选
+python scripts/llm_design.py --template examples/tsp.json --baselines
+
+# 没有 API Key 时，用 --mock 本地演示完整流程（不调用真实 API）
+python scripts/llm_design.py --template examples/knapsack.json --mock
 ```
+
+### LLM 模板格式
+
+模板是一个 JSON 文件（见 `examples/`），**你只需要按模板填入问题类型和实例数据**：
+
+```json
+{
+  "problem_type": "tsp",                    // tsp | knapsack | flowshop
+  "instance": {                              // 你的数据；留空/只给规模则随机生成
+    "coords": [[0.51, 0.95], [0.14, 0.95]]   // tsp: 城市坐标
+  },
+  "iterations": 60,                          // 主循环迭代预算
+  "n_search_steps": 4,                       // 算法可包含的搜索构件步数上限
+  "runs": 3,                                 // 对设计出的算法重复运行取最优
+  "compare_baselines": true,
+  "llm": { "model": "deepseek-chat", "temperature": 0.2 }
+}
+```
+
+- **背包**：`instance` 填 `values` / `weights` / `capacity`；
+- **流水车间**：`instance` 填 `p`（n_jobs × n_machines 加工时间矩阵）；
+- **TSP**：`instance` 填 `coords`（二维坐标数组）；也可以只填 `"n": 30` 自动生成随机实例。
+
+大模型只做**算法决策**（根据实例统计特征 + 构件库清单输出构件组合与参数档位），
+数值求解仍由构件库执行器完成；输出会自动校验（构件 id / 参数档位 / 结构），
+非法时回退到默认算法并给出警告。支持 `action: "select"` 直接选现成算法
+（`ga` / `sa` / `random`）。兼容任意 OpenAI 兼容端点：换 `base_url` 与 `model`
+即可接入 OpenAI、智谱 GLM、通义千问、Kimi 等。
 
 所有运行产物输出到 `outputs/`：
 
@@ -85,6 +127,7 @@ python -m pytest tests/ -v
 | `{problem}_spec_usage.png` | 自动设计算法中构件使用频率统计 |
 | `tsp_routes.png` | TSP 上各算法路径对比 |
 | `results.txt` | 评估结果总表 |
+| `llm_design_result.txt` | LLM 自动设计算法的求解结果（用 llm_design.py 生成） |
 
 ## 四、评估口径
 
@@ -107,6 +150,7 @@ python -m pytest tests/ -v
 - **奖励**：单标量奖励（解质量改进率）；可扩展为多目标（解质量 + 运行时间 + 鲁棒性）。
 - **策略**：线性 softmax 策略；可替换为 PPO/分层 RL（上层选算法范式、下层调参），对应论文方向1 的完整三层架构。
 - **构件库**：可继续扩充（路径重连、变邻域搜索 VNS、自适应算子等）。
+- **LLM 协同**：本仓库的 `llm/` 模块已提供「LLM 做算法决策、构件库执行求解」的可选入口，可作为 EoH（LLM 驱动的超启发式演化）实验的起点。
 
 ## 七、License
 

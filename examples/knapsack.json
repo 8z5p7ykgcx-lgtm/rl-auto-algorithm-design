@@ -1,0 +1,13 @@
+{
+  "problem_type": "knapsack",
+  "instance": {
+    "values": [75, 12, 88, 54, 96, 33, 71, 27, 64, 81, 40, 58, 22, 93, 47, 69, 18, 85, 31, 77],
+    "weights": [20, 8, 33, 18, 41, 12, 26, 9, 29, 37, 15, 23, 7, 44, 19, 30, 6, 39, 11, 35],
+    "capacity": 150
+  },
+  "iterations": 60,
+  "n_search_steps": 4,
+  "runs": 3,
+  "compare_baselines": true,
+  "llm": { "model": "deepseek-chat", "temperature": 0.2 }
+}
